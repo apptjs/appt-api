@@ -1,15 +1,15 @@
 import jwt from "express-jwt";
 import EventEmitter from "events";
 
-import { apptEcossystem } from '@appt/core';
+import { apptEcosystem } from '@appt/core';
 import { Router } from 'express';
 import apptApi from './appt.api';
 
 class ApptRoute {
-  constructor(route, use, target){    
-    this.path = route.path;
-    this.auth = route.auth;
-    this.components = use;
+  constructor(extend, target){    
+    this.path = extend.config.path;
+    this.auth = extend.config.auth;    
+    this.components = extend.use;
     this.target = target;
   }
 }
@@ -19,15 +19,15 @@ class RouterChain {
     this.list = [];
   }
 
-  add(route, use, target){    
+  add(extend, target){    
     if(!this.list.some(item => item.target === target)){
-      const apptRoute = new ApptRoute(route, use, target);
+      const apptRoute = new ApptRoute(extend, target);      
       this.list.push(apptRoute);
     }    
   }
 
   getByTarget(target){
-    return new Promise((resolve, reject) => {    
+    return new Promise((resolve, reject) => {      
       const route = this.list.find(route => target === route.target);      
       
       this.buildChain(route, completePath => {        
@@ -44,7 +44,7 @@ class RouterChain {
       
       return this.buildChain(parent, cb, routes);
     } else {
-      return cb(routes)
+      cb(routes)
     }
   }
 
@@ -119,15 +119,16 @@ class ApptRouterSystem {
 
   useRouterPath(routerChain){
     const router = Router();
+
     this.api.use(this.getRouterPath(routerChain), router);
   
     return router;
   }
 
-  addBasePath(route, use, target){    
+  addBasePath(extend, target){    
     return new Promise(resolve => {          
       
-      this.routerChain.add(route, use, target);      
+      this.routerChain.add(extend, target);      
       
       resolve();
     })    
@@ -137,16 +138,54 @@ class ApptRouterSystem {
 export const apptRouterSystem = new ApptRouterSystem();
 
 export default class TRouter {
-  constructor(){}
+  constructor(targetName){
+    this.targetName = '';
+  }
 
-  exec(base, use, Target, injectables) {    
-    return apptRouterSystem.addBasePath(base, use, Target.name)
-      .then(res => {        
-        if(injectables && injectables.length > 0){
-          return new Target(...injectables)
-        } else {
-          return new Target()
+  exec(extend, Target, injectables) {
+    this.targetName = Target.name;
+
+    return new Promise(resolve => {
+      if(extend.use){
+        return this.normalizeComponents(extend.use)
+          .then(components => {
+            extend.use = components;
+            
+            resolve(extend);
+          });
+      } else resolve(extend);      
+    })
+    .then(extend => apptRouterSystem.addBasePath(extend, Target.name))
+    .then(res => {        
+      if(injectables && injectables.length > 0){
+        return new Target(...injectables)
+      } else {
+        return new Target()
+      }
+    })
+  }
+
+  normalizeComponents(components){     
+    return new Promise(resolve => {
+      if(!(components instanceof Array)){
+        components = [components]
+      }
+      
+      const arrComponents = components.map(component => {
+        if(typeof component === 'string'){
+          // only for component's name validation purposes
+          apptEcosystem.getEntity(component, this.targetName);
+          
+          return component;
+        }          
+        else {          
+          const apptPromise = new component();          
+          
+          return apptPromise.then(comp => comp.constructor.name);
         }
-      })
+      });
+
+      resolve(Promise.all(arrComponents))
+    });
   }
 }

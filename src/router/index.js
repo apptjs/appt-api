@@ -15,13 +15,13 @@ function decoratorFactory(args, cb){
    return function(Target, propertyKey, descriptor) {
       return apptRouterSystem.isReady(Target.constructor.name)
             .then((expRouter) => {
-                  const Entity = apptEcosystem.getEntity(Target.constructor.name);
+                  const Entity = apptEcosystem.getEntity(Target.constructor.name, Target.constructor.name);
                   const promiseEntity = new Entity();
                   
                   return promiseEntity.then(target => {
                         const { path, middlewares } = getRouteParams(args, descriptor.value.bind(target));
 
-                        return cb(path, middlewares, expRouter);
+                        cb(path, middlewares, expRouter);
                   });
             });
       }
