@@ -1,6 +1,7 @@
 # @appt/api
-This package brings and wraps to the Appt's ecosystem all the essential packages, middlewares and configurations to built a ready-to-go REST Api. 
-We assume you got here after seeing the [Appt's Main Page](https://github.com/brab0/appt) . If you don't, **we strongly recommend** you to step back an take a 5 minutes reading to get used with some key concepts we're going to apply here.
+This package brings and wraps to the Appt's ecosystem all the essential packages, middlewares and configurations to build a ready-to-go REST Api. 
+
+We assume you got here after seeing the [Appt's Core](https://www.npmjs.com/package/@appt/core) session of main concepts. If you don't, **we strongly recommend** you to step back an take a 5 minutes reading to get used with some key concepts we're going to apply here.
 
 
 ## Install
@@ -38,7 +39,7 @@ import {
 This is a *special-type extender* we can use to transform a component into an **express server**. There are many default configurations (as you can see at the example below) which, without them, you probably could not do much. That brings us one of the Appt's main goals: *allow you to start a project with minimum effort*. Of course you can override each one of them.
 
 ```javascript
-import { ApptComponent } from '@appt/core';
+import { Component } from '@appt/core';
 import { TServer } from '@appt/api';
 
 
@@ -72,7 +73,7 @@ const config = {
 	}]
 };
 
-@ApptComponent({
+@Component({
 	extend: {
 		type: TServer,
 		config: config
@@ -93,10 +94,10 @@ Since one of our main concerns is *allow you to have total control on what the a
 ```javascript
 /* api.router.js */
 
-import { ApptComponent } from '@appt/core';
+import { Component } from '@appt/core';
 import { TRouter } from '@appt/api';
 
-@ApptComponent({
+@Component({
 	extend: {
 		type: TRouter,
 		use: ['PrivateRouter', 'PublicRouter'],
@@ -110,10 +111,10 @@ export class ApiRouter{}
 ```javascript
 /* public.router.js */
 
-import { ApptComponent } from '@appt/core';
+import { Component } from '@appt/core';
 import { TRouter } from '@appt/api';
 
-@ApptComponent({
+@Component({
 	extend: {
 		type: TRouter,
 		config: {
@@ -125,7 +126,7 @@ export class PublicRouter{}
 ```
 ```javascript
 /* private.router.js */
-@ApptComponent({
+@Component({
 	extend: {
 		type: TRouter,
 		config: {
@@ -164,6 +165,7 @@ config: {
 ...
 ```
 We are using `express-jwt` to control our router access. So, if you want to protect some path, just define the JWT secret to decrypt the *Bearer Authorization token* passed on the request header and, if you want some exception rule to ignore a path, just use the respective property. 
+
 ### Router Methods
 Appt's router methods are essentially **express router methods with sugar**. So first, we export every method express also does on a Capitalized pattern. Second, makes sense for us to maintain an semantic and coherent pattern, since many things here are using decorator and annotation syntax. Lets improve the *PrivateRouter* component a little: 
 ```javascript
@@ -172,7 +174,7 @@ Appt's router methods are essentially **express router methods with sugar**. So 
 import { TRouter } from '@appt/api';
 import { Get, Post } from '@appt/api/router';
 
-@ApptComponent({
+@Component({
 	extend: {
 		type: TRouter,
 		config: {
@@ -211,10 +213,10 @@ Pretty much express in a sugar syntax, right?
 ### api
 This is an exportation of express *as-it-is*. You might want decide to do something with it and, **why not?** From it, you can access an express instance, which Appt is using or even the 'class' to handle whatever you want.
 ```javascript
-import { ApptComponent } from '@appt/core';
+import { Component } from '@appt/core';
 import { api } from '@appt/api';
 
-@ApptComponent()
+@Component()
 export class SomeComponent{
 	printExpressApiInstance(){	
 		console.log(this.instance);
