@@ -4,23 +4,23 @@ import { apptRouterSystem } from '../TRouter';
 function getRouteParams(args, main){
    const arrArgs = Array.from(args);
    const path = arrArgs.shift();
-
+   
    return {
       path: path, 
       middlewares: arrArgs.concat(main)
    };
 }
 
-function decoratorFactory(args, cb){
-   return function(Target, propertyKey, descriptor) {
+function decoratorFactory(args, cb){      
+   return function(Target, propertyKey, descriptor) {      
       return apptRouterSystem.isReady(Target.constructor.name)
             .then((expRouter) => {
                   const Entity = apptEcosystem.getEntity(Target.constructor.name, Target.constructor.name);
                   const promiseEntity = new Entity();
                   
-                  return promiseEntity.then(target => {
+                  return promiseEntity.then(target => {                        
                         const { path, middlewares } = getRouteParams(args, descriptor.value.bind(target));
-
+                        
                         cb(path, middlewares, expRouter);
                   });
             });
