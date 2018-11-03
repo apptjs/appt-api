@@ -6,10 +6,10 @@ import { Router } from 'express';
 import apptApi from './appt.api';
 
 class ApptRoute {
-  constructor(extend, target){    
-    this.path = extend.config.path;
-    this.auth = extend.config.auth;    
-    this.components = extend.use;
+  constructor(config, target){        
+    this.path = config.path;
+    this.auth = config.auth;    
+    this.components = config.children;
     this.target = target;
   }
 }
@@ -19,18 +19,18 @@ class RouterChain {
     this.list = [];
   }
 
-  add(extend, target){    
-    if(!this.list.some(item => item.target === target)){
-      const apptRoute = new ApptRoute(extend, target);      
+  add(config, target){    
+    if(!this.list.some(item => item.target === target)){      
+      const apptRoute = new ApptRoute(config, target);      
       this.list.push(apptRoute);
     }    
   }
 
   getByTarget(target){
-    return new Promise((resolve, reject) => {      
+    return new Promise((resolve, reject) => {
       const route = this.list.find(route => target === route.target);      
       
-      this.buildChain(route, completePath => {        
+      this.buildChain(route, completePath => {            
         resolve(completePath)
       });
     })
@@ -70,7 +70,6 @@ class ApptRouterSystem {
 
   isReady(route){
     return new Promise(resolve => {
-      
       if(this.ready[route])
         this.ready[route].push(new EventEmitter());
       else 
@@ -119,16 +118,15 @@ class ApptRouterSystem {
 
   useRouterPath(routerChain){
     const router = Router();
-
     this.api.use(this.getRouterPath(routerChain), router);
   
     return router;
   }
 
-  addBasePath(extend, target){    
+  addBasePath(config, target){    
     return new Promise(resolve => {          
       
-      this.routerChain.add(extend, target);      
+      this.routerChain.add(config, target);      
       
       resolve();
     })    
@@ -137,55 +135,68 @@ class ApptRouterSystem {
 
 export const apptRouterSystem = new ApptRouterSystem();
 
-export default class TRouter {
-  constructor(targetName){
-    this.targetName = '';
+export default function TRouter(main, options = null) {  
+  return {
+    target: ApptTRouter,
+    args: {
+      main: main,
+      options: options
+    }
+  }
+}
+
+class ApptTRouter {
+  constructor(extenderParams, target, injectables){
+    this.target = target;
+    this.extenderParams = Object.assign({
+      path: extenderParams.main
+    }, extenderParams.options);
+    
+    return this.exec(injectables);
   }
 
-  exec(extend, Target, injectables) {
-    this.targetName = Target.name;
-
+  exec(injectables) {
     return new Promise(resolve => {
-      if(extend.use){
-        return this.normalizeComponents(extend.use)
+      if(this.extenderParams.children){        
+        return this.normalizeComponents(this.target.name, this.extenderParams.children)
           .then(components => {
-            extend.use = components;
-            
-            resolve(extend);
+            this.extenderParams.children = components;
+
+            resolve(this.extenderParams);
           });
-      } else resolve(extend);      
+      } else resolve(this.extenderParams);      
     })
-    .then(extend => apptRouterSystem.addBasePath(extend, Target.name))
+    .then(config => {
+      return apptRouterSystem.addBasePath(config, this.target.name)
+    })
     .then(res => {        
       if(injectables && injectables.length > 0){
-        return new Target(...injectables)
+        return new this.target(...injectables)
       } else {
-        return new Target()
+        return new this.target()
       }
     })
   }
 
-  normalizeComponents(components){     
+  normalizeComponents(targetName, components){      
     return new Promise(resolve => {
       if(!(components instanceof Array)){
         components = [components]
-      }
+      }      
       
       const arrComponents = components.map(component => {
         if(typeof component === 'string'){
           // only for component's name validation purposes
-          apptEcosystem.getEntity(component, this.targetName);
+          apptEcosystem.getEntity(component, targetName);
           
           return component;
         }          
-        else {          
-          const apptPromise = new component();          
-          
-          return apptPromise.then(comp => comp.constructor.name);
+        else {
+          return component().then(comp => comp.constructor.name);
         }
       });
 
-      resolve(Promise.all(arrComponents))
+      return Promise.all(arrComponents).then(res => resolve(res))
     });
   }
 }

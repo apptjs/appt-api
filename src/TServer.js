@@ -1,16 +1,23 @@
 import { apptRouterSystem } from './TRouter';
 import apptApi from './appt.api';
 
-export default class TServer{
-    constructor(){
+export default function TServer(main, options = null){
+    return {
+        target: ApptServer,
+        args: {
+            main: main,
+            options: options
+        }
+    }
+}
+
+class ApptServer{
+    constructor(extenderParams, Target){
         this.api = apptApi.getInstance();
         this.express = apptApi.getExpress();
 
         this.defaultConfig = {
-            address: {
-                host : "http://localhost",
-                port : 3000
-            },
+            port: extenderParams && extenderParams.main || 3000,
             statics: [],
             bodyParser: {
                 json: {
@@ -33,10 +40,12 @@ export default class TServer{
         }; 
         
         this.customConfig = this.defaultConfig;
-   }
 
-   setAddress(addressConfig) {       
-      this.customConfig.address = addressConfig || this.defaultConfig.address;      
+        this.setStatics(extenderParams && extenderParams.options && extenderParams.options.statics);
+        this.setBodyParser(extenderParams && extenderParams.options && extenderParams.options.bodyParser);
+        this.setCors(extenderParams && extenderParams.options && extenderParams.options.cors);
+
+        return this.exec(Target)
    }
 
    setStatics(staticsConfig) {
@@ -73,26 +82,24 @@ export default class TServer{
 
    loadRoutes(){
         Object.keys(apptRouterSystem.ready)
-            .forEach(routerName => {                
+            .forEach(routerName => {
                 apptRouterSystem.ready[routerName]
                     .forEach(routerEvent => routerEvent.emit('complete'));
             });
    }
 
-   exec(extend, Target) {
-      this.setAddress(extend.config && extend.config.address);      
-      this.setStatics(extend.config && extend.config.statics);
-      this.setBodyParser(extend.config && extend.config.bodyParser);
-      this.setCors(extend.config && extend.config.cors);
+   exec(Target) {
+        this.loadRoutes();
 
-      this.loadRoutes();
-
-      return new Promise((resolve, reject) => {        
-        this.api.listen(this.customConfig.address.port, 
-          (err) => {               
-            if(err) reject(err);            
-            resolve(new Target(this.customConfig));
-          });
-      });
+        return new Promise((resolve, reject) => {        
+            this.api.listen(this.customConfig.port, 
+                (err) => {
+                    if(err) reject(err);            
+                    resolve(new Target({
+                        instance: this.api,
+                        config: this.customConfig
+                    }));
+                });
+        });
    }
 }

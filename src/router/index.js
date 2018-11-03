@@ -18,7 +18,7 @@ function decoratorFactory(args, cb){
                   const Entity = apptEcosystem.getEntity(Target.constructor.name, Target.constructor.name);
                   const promiseEntity = new Entity();
                   
-                  return promiseEntity.then(target => {                        
+                  return promiseEntity.then(target => {
                         const { path, middlewares } = getRouteParams(args, descriptor.value.bind(target));
                         
                         cb(path, middlewares, expRouter);

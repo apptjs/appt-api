@@ -45,44 +45,40 @@ import { TServer } from '@appt/api';
 
 /* These are the default configuration you can override */
 const config = {
-	address: {
-		host : "http://localhost",
-		port : 3000
-	},
-	statics: [{
-		route: '/',
-		path: '/'
-	}],
-	bodyParser: {
-		json: {
-			limit: '50mb',
-			type: 'application/json'
+	port: 3000,
+	options: {
+		statics: [{
+			route: '/',
+			path: '/'
+		}],
+		bodyParser: {
+			json: {
+				limit: '50mb',
+				type: 'application/json'
+			},
+			urlencoded: {
+				limit: '50mb',
+				extended: true
+			}
 		},
-		urlencoded: {
-			limit: '50mb',
-			extended: true
-		}
-	},
-	cors: [{
-		route: "/*",
-		header: {
-			"Access-Control-Allow-Origin": "*",
-			"Access-Control-Allow-Headers": "Authorization, Content-Type, Origin, Accept, X-Requested-With, Origin, Cache-Control, X-File-Name",
-			"Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS, DELETE"
-		}
-	}]
+		cors: [{
+			route: "/*",
+			header: {
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Headers": "Authorization, Content-Type, Origin, Accept, X-Requested-With, Origin, Cache-Control, X-File-Name",
+				"Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS, DELETE"
+			}
+		}]
+	}
 };
 
 @Component({
-	extend: {
-		type: TServer,
-		config: config
-	}
+	extend: TServer(config.port, config.options)
 })
 export class ApiServer{
 	constructor(config){
 		// the especial-type externder TServer inject all the server configurations
-		console.log(`Server running at ${config.address.host}:${config.address.port}`)
+		console.log(`Server running at http://localhost:${config.port}`)
 	}
 }
 ```
@@ -98,13 +94,9 @@ import { Component } from '@appt/core';
 import { TRouter } from '@appt/api';
 
 @Component({
-	extend: {
-		type: TRouter,
-		use: ['PrivateRouter', 'PublicRouter'],
-		config: {
-			path: '/api'
-		}
-	}
+	extend: TRouter('/api', {
+		children: ['PrivateRouter', 'PublicRouter']
+	})
 })
 export class ApiRouter{}
 ```
@@ -115,53 +107,32 @@ import { Component } from '@appt/core';
 import { TRouter } from '@appt/api';
 
 @Component({
-	extend: {
-		type: TRouter,
-		config: {
-			path: '/public'
-		}
-	}
+	extend: TRouter('/public')
 })
 export class PublicRouter{}
 ```
 ```javascript
 /* private.router.js */
 @Component({
-	extend: {
-		type: TRouter,
-		config: {
-			path: '/private',
-			auth: {
-				secret: '231edfrw21g34',
-				ignore: ['favicon.ico', /\/back-/\/]
-			}
+	extend: TRouter('/private', {
+		auth: {
+			secret: '231edfrw21g34',
+			ignore: ['favicon.ico', /\/back-/\/]
 		}
-	}
+	})
 })
 export class PrivateRouter{}
 
 ```
-A few things are going on here. The `use: ['PrivateRouter', 'PublicRouter']` will tell Appt to look if such components are TRouters. If so, they're gonna assemble their `paths` and form a basepath. For those who have experienced express, internally the result of the example above will be something like:
-```javascript
-import express from  'express';
-const { Router } = express;
+A few things are going on here. The `children: ['PrivateRouter', 'PublicRouter']` will tell Appt to look if such components are TRouters. If so, they're gonna assemble their `paths` and form a basepath. 
 
-const app = express();
-const router = Router();
-    
-app.use('/api/public', router);
-app.use('/api/private', router);
-```
 Another thing to pay attention is the `auth` property:
 ```javascript
 ...
-config: {
-	path: '/private',
 	auth: {
 		secret: '231edfrw21g34',
 		ignore: ['favicon.ico', /\/back-/\/]
 	}
-}
 ...
 ```
 We are using `express-jwt` to control our router access. So, if you want to protect some path, just define the JWT secret to decrypt the *Bearer Authorization token* passed on the request header and, if you want some exception rule to ignore a path, just use the respective property. 
@@ -175,16 +146,12 @@ import { TRouter } from '@appt/api';
 import { Get, Post } from '@appt/api/router';
 
 @Component({
-	extend: {
-		type: TRouter,
-		config: {
-			path: '/private',
-			auth: {
-				secret: '231edfrw21g34',
-				ignore: ['favicon.ico', /\/back-/\/]
-			}
+	extend: TRouter('/private', {
+		auth: {
+			secret: '231edfrw21g34',
+			ignore: ['favicon.ico', /\/back-/\/]
 		}
-	},
+	}),
 	inject: ['MiddlewaresComponent']
 })
 export class PrivateRouter{
